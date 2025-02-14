@@ -1,0 +1,199 @@
+services:
+  postgres:
+    image: postgres:16
+    env_file:
+      - .env
+    volumes:
+      - ./db.sql:/docker-entrypoint-initdb.d/db.sql
+      - ~/postgres-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      internal:
+        aliases:
+          - postgres
+      external:
+        aliases:
+          - postgres
+
+  authentication-services:
+    container_name: authentication-services
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8001"
+    # build:
+    #   context: ./auth-microservice
+    ports:
+      - "8001:8001"  
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      internal:
+        aliases:
+          - authentication-services
+      external:
+        aliases:
+          - authentication-services
+
+
+  product-services:
+    container_name: product-services
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8002"
+    # build:
+    #   context: ./product-microservice
+    ports:
+      - "8002:8002"  
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      internal:
+        aliases:
+          - product-services
+      external:
+        aliases:
+          - products-services
+
+  customer-services:
+    container_name: customer-services
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8003"
+    # build:
+    #   context: ./customer-microservice
+    ports:
+      - "8003:8003"  
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      internal:
+        aliases:
+          - customer-services
+      external:
+        aliases:
+          - customer-services
+
+  schedule-services:
+    container_name: schedule-services
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8004"
+    # build:
+    #   context: ./schedule-microservice
+    volumes:
+      # - ~/schedule-microservice:/app
+      - ~/rabbitmq:/app/rabbitmq
+    ports:
+      - "8004:8004"
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      internal:
+        aliases:
+          - schedule-services
+      external:
+        aliases:
+          - schedule-services
+
+
+  trigger-services:
+    container_name: trigger-services
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8005"
+    # build:
+    #   context: ./trigger-microservice
+    # volumes:
+    #   # - ./trigger-microservice:/app
+    #   - ~/rabbitmq:/app/rabbitmq
+    ports:
+      - "8005:8005"
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      internal:
+        aliases:
+          - trigger-services
+      external:
+        aliases:
+          - trigger-services
+
+  frontend:
+    container_name: frontend
+    # build:
+    #   context: ./frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - internal
+      - external
+
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:4.0-management
+    platform: linux/amd64
+    restart: always
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 10s
+      timeout: 30s
+      retries: 20
+    volumes:
+      - ~/rabbitmq:/var/lib/rabbitmq
+    depends_on:
+      - postgres
+    networks:
+      internal:
+        aliases:
+          - rabbitmq
+      external:
+        aliases:
+          - rabbitmq
+
+  queue:
+    container_name: queue
+    platform: linux/amd64
+    # build:
+    #   context: ./queue
+    env_file:
+      - .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - internal
+      - external
+
+  gateway:
+    container_name: gateway
+    # build:
+    #   context: ./gateway
+    networks:
+      - internal
+      - external
+    ports:
+      - "80:80" 
+    depends_on:
+      - authentication-services
+      - product-services
+      - customer-services
+      - schedule-services
+      - trigger-services
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  external:
+    driver: bridge
+    internal: false
+
+volumes:
+  rabbitmq_data:

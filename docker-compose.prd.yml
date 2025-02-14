@@ -1,0 +1,32 @@
+services:
+  authentication-services:
+    image: registry.coding.ipb.pt/sdt-project-group-07/auth:prd
+
+  product-services:
+    image: registry.coding.ipb.pt/sdt-project-group-07/product:prd
+
+  customer-services:
+    image: registry.coding.ipb.pt/sdt-project-group-07/customer:prd
+
+  schedule-services:
+    image: registry.coding.ipb.pt/sdt-project-group-07/schedule:prd
+
+  trigger-services:
+    image: registry.coding.ipb.pt/sdt-project-group-07/trigger:prd
+  
+  frontend:
+    image: registry.coding.ipb.pt/sdt-project-group-07/frontend:prd
+
+  queue:
+    image: registry.coding.ipb.pt/sdt-project-group-07/queue:prd
+
+  gateway:
+    image: registry.coding.ipb.pt/sdt-project-group-07/gateway:prd
+
+  
+
+
+
+
+
+
